@@ -1,29 +1,47 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
+async function registerServiceWorker(
+  canvas: HTMLCanvasElement,
+  registration: ServiceWorkerRegistration | undefined
+) {
+  const controller = navigator.serviceWorker.controller;
+  if (controller) return;
+
+  console.log('registering...');
+  registration = await navigator.serviceWorker.register('/sw.js');
+
+  console.log('registered. waiting for activation.');
+  await navigator.serviceWorker.ready;
+
+  console.log('ready.');
+  const offscreenCanvas = canvas.transferControlToOffscreen();
+  registration.active?.postMessage({ canvas: offscreenCanvas }, [
+    offscreenCanvas
+  ]);
+}
 
 function App() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [canvasRef, setCanvasRef] = useState<HTMLCanvasElement | null>(null);
 
-  useEffect(() => {
-    let skip = false;
-    let registration: ServiceWorkerRegistration;
-    async function registerServiceWorker() {
-      registration = await navigator.serviceWorker.register('/sw.js');
-      if (skip || !canvasRef.current || !registration.active) {
-        return;
-      }
-      const offscreenCanvas = canvasRef.current.transferControlToOffscreen();
-      registration.active.postMessage({ canvas: offscreenCanvas }, [
-        offscreenCanvas
-      ]);
+  const callbackCanvasRef = useCallback((node: HTMLCanvasElement | null) => {
+    if (node !== null) {
+      setCanvasRef(node);
     }
-    registerServiceWorker();
-    return () => {
-      skip = true;
-      registration?.unregister();
-    };
   }, []);
 
-  return <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />;
+  useEffect(() => {
+    let registration: ServiceWorkerRegistration | undefined;
+    if (canvasRef) {
+      registerServiceWorker(canvasRef, registration);
+    }
+    return () => {
+      registration?.unregister();
+    };
+  }, [canvasRef]);
+
+  return (
+    <canvas ref={callbackCanvasRef} style={{ width: '100%', height: '100%' }} />
+  );
 }
 
 export default App;
