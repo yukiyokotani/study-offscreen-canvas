@@ -4,9 +4,6 @@ async function registerServiceWorker(
   canvas: HTMLCanvasElement,
   registration: ServiceWorkerRegistration | undefined
 ) {
-  const controller = navigator.serviceWorker.controller;
-  if (controller) return;
-
   console.log('registering...');
   registration = await navigator.serviceWorker.register('/sw.js');
 
